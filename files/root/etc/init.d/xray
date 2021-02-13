@@ -76,8 +76,11 @@ get_lan_hosts() {
 }
 
 gen_xtls_flow() {
-	if [ "V$(uci_get_by_name $1 security)" == 'Vxtls' ]; then
-		echo -e '\n                "flow": "xtls-rprx-direct",'
+	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
+	local flow=$(uci_get_by_name $1 security | sed 's+.*-++g')
+	[ "V${flow}" == 'Vxtls' ] && flow='splice'
+	if [ "V${security}" == 'Vxtls' ]; then
+		echo -e "\n                \"flow\": \"xtls-rprx-${flow}\","
 	fi
 }
 
@@ -204,6 +207,7 @@ EOF
 }
 
 gen_server_config() {
+	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
 	validate_server $1 && cat <<-EOF
 		    {
 		      "protocol": "$(uci_get_by_name $1 protocol)",
@@ -224,8 +228,8 @@ gen_server_config() {
 		      },
 		      "streamSettings": {
 		        "network": "tcp",
-		        "security": "$(uci_get_by_name $1 security)",
-		        "$(uci_get_by_name $1 security)Settings": {
+		        "security": "${security}",
+		        "${security}Settings": {
 		          "serverName": "$(uci_get_by_name $1 server)"
 		        }
 		      }

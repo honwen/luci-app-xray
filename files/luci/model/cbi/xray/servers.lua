@@ -45,7 +45,8 @@ end
 
 o = s:option(DummyValue, "security", translate("Security"))
 function o.cfgvalue(...)
-	return Value.cfgvalue(...) or translate("None")
+	local v = Value.cfgvalue(...)
+	return v and v:upper() or "?"
 end
 
 return m

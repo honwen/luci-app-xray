@@ -9,7 +9,8 @@ local protocols = {
 	"vless",
 }
 local securitys = {
-	"xtls",
+	"xtls-splice",
+	"xtls-direct",
 	"tls",
 }
 
@@ -49,7 +50,7 @@ o.rmempty = false
 
 o = s:option(ListValue, "security", translate("Security"))
 for _, v in ipairs(securitys) do o:value(v, v:upper()) end
-o.default = 'xtls'
+o.default = 'xtls-splice'
 o.rmempty = false
 
 return m

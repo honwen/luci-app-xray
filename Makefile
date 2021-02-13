@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-xray
-PKG_VERSION:=0.1.1
+PKG_VERSION:=0.2.0
 PKG_RELEASE:=1
 
 PKG_LICENSE:=GPLv3
@@ -19,18 +19,16 @@ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/luci-app-xray/Default
+define Package/$(PKG_NAME)
 	SECTION:=luci
 	CATEGORY:=LuCI
 	SUBMENU:=3. Applications
 	TITLE:=LuCI Support for Xray
 	PKGARCH:=all
-	DEPENDS:=+iptables +ipset +curl +ip +iptables-mod-tproxy $(1)
+	DEPENDS:=+iptables +ipset +curl +ip +iptables-mod-tproxy
 endef
 
-Package/luci-app-xray = $(call Package/luci-app-xray/Default,+ipset)
-
-define Package/luci-app-xray/description
+define Package/$(PKG_NAME)/description
 	LuCI Support for Xray.
 endef
 
@@ -45,7 +43,7 @@ endef
 define Build/Compile
 endef
 
-define Package/luci-app-xray/postinst
+define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
 	if [ -f /etc/uci-defaults/luci-xray ]; then
@@ -57,11 +55,11 @@ fi
 exit 0
 endef
 
-define Package/luci-app-xray/conffiles
+define Package/$(PKG_NAME)/conffiles
 /etc/config/xray
 endef
 
-define Package/luci-app-xray/install
+define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/xray.*.lmo $(1)/usr/lib/lua/luci/i18n/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
@@ -80,4 +78,4 @@ define Package/luci-app-xray/install
 	$(INSTALL_BIN) ./files/root/usr/bin/xray-rules$(2) $(1)/usr/bin/xray-rules
 endef
 
-$(eval $(call BuildPackage,luci-app-xray))
+$(eval $(call BuildPackage,$(PKG_NAME)))
