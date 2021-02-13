@@ -19,7 +19,7 @@ local has_ss = has_bin("sslocal")
 
 if not has_ss then
 	return Map(xray, "%s - %s" %{translate("Xray"),
-		translate("General Settings")}, '<b style="color:red">xray-rust binary file not found.</b>')
+		translate("General Settings")}, '<b style="color:red">xray binary file not found.</b>')
 end
 
 local function is_running(name)
@@ -77,7 +77,6 @@ o = s:option(Value, "local_port", translate("Local Port"))
 o.datatype = "port"
 o.default = 1234
 o:depends('enable', '1')
-o.rmempty = false
 
 -- [[ HTTP Proxy ]]--
 s = m:section(TypedSection, "http_proxy", translate("HTTP Proxy"))
@@ -90,7 +89,6 @@ o = s:option(Value, "local_port", translate("Local Port"))
 o.datatype = "port"
 o.default = 1080
 o:depends('enable', '1')
-o.rmempty = false
 
 -- [[ SOCKS5 Proxy ]]--
 s = m:section(TypedSection, "socks5_proxy", translate("SOCKS5 Proxy"))
@@ -103,7 +101,6 @@ o = s:option(Value, "local_port", translate("Local Port"))
 o.datatype = "port"
 o.default = 1080
 o:depends('enable', '1')
-o.rmempty = false
 
 -- [[ Port Forward ]]--
 s = m:section(TypedSection, "port_forward", translate("Port Forward"))
@@ -116,11 +113,9 @@ o = s:option(Value, "local_port", translate("Local Port"))
 o.datatype = "port"
 o.default = 5300
 o:depends('enable', '1')
-o.rmempty = false
 
 o = s:option(Value, "destination", translate("Destination"))
 o.default = "8.8.4.4:53"
 o:depends('enable', '1')
-o.rmempty = false
 
 return m

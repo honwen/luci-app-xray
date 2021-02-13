@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-xray
-PKG_VERSION:=0.1.0
-PKG_RELEASE:=2
+PKG_VERSION:=0.1.1
+PKG_RELEASE:=1
 
 PKG_LICENSE:=GPLv3
 PKG_LICENSE_FILES:=LICENSE
@@ -23,7 +23,7 @@ define Package/luci-app-xray/Default
 	SECTION:=luci
 	CATEGORY:=LuCI
 	SUBMENU:=3. Applications
-	TITLE:=LuCI Support for xray-rust
+	TITLE:=LuCI Support for Xray
 	PKGARCH:=all
 	DEPENDS:=+iptables +ipset +curl +ip +iptables-mod-tproxy $(1)
 endef
@@ -31,7 +31,7 @@ endef
 Package/luci-app-xray = $(call Package/luci-app-xray/Default,+ipset)
 
 define Package/luci-app-xray/description
-	LuCI Support for xray-rust.
+	LuCI Support for Xray.
 endef
 
 define Build/Prepare
