@@ -14,9 +14,7 @@ config socks5_proxy
 	option enable '0'
 
 config port_forward
-	option enable '1'
-	option local_port '5300'
-	option destination '8.8.4.4:53'
+	option enable '0'
 
 config servers
 	option alias 'sample-xtls'
