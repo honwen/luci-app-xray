@@ -24,7 +24,7 @@ function index()
 		arcombine(cbi("xray/servers"), cbi("xray/servers-details")),
 		_("Servers Manage"), 20).leaf = true
 
-	if luci.sys.call("command -v sslocal >/dev/null") ~= 0 then
+	if luci.sys.call("command -v xray >/dev/null") ~= 0 then
 		return
 	end
 

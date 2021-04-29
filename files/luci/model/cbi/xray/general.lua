@@ -15,9 +15,7 @@ local function has_udp_relay()
 	return luci.sys.call("lsmod | grep -q TPROXY && command -v ip >/dev/null") == 0
 end
 
-local has_ss = has_bin("sslocal")
-
-if not has_ss then
+if not has_bin("xray") then
 	return Map(xray, "%s - %s" %{translate("Xray"),
 		translate("General Settings")}, '<b style="color:red">xray binary file not found.</b>')
 end
