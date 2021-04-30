@@ -173,7 +173,7 @@ gen_config_inbound_socks5() {
 	uci_bool_by_type 'socks5_proxy' 'enable' && cat <<-EOF
 		    {
 		      "protocol": "socks",
-		      "port": $(uci_get_by_type http_proxy local_port),
+		      "port": $(uci_get_by_type socks5_proxy local_port),
 		      "address": "0.0.0.0",
 		      "settings": {
 		        "udp": true
