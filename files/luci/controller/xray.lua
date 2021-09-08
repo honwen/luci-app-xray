@@ -9,44 +9,60 @@ function index()
 		return
 	end
 
-	entry({"admin", "services", "xray"},
+	page = entry({"admin", "services", "xray"},
 		alias("admin", "services", "xray", "general"),
-		_("Xray"), 10).dependent = true
+		_("Xray"), 10)
+	page.dependent = true
+	page.acl_depends = { "luci-app-xray" }
 
-	entry({"admin", "services", "xray", "general"},
+	page = entry({"admin", "services", "xray", "general"},
 		cbi("xray/general"),
-		_("General Settings"), 10).leaf = true
+		_("General Settings"), 10)
+	page.leaf = true
+	page.acl_depends = { "luci-app-xray" }
 
-	entry({"admin", "services", "xray", "status"},
-		call("action_status")).leaf = true
+	page = entry({"admin", "services", "xray", "status"},
+		call("action_status"))
+	page.leaf = true
+	page.acl_depends = { "luci-app-xray" }
 
-	entry({"admin", "services", "xray", "servers"},
+	page = entry({"admin", "services", "xray", "servers"},
 		arcombine(cbi("xray/servers"), cbi("xray/servers-details")),
-		_("Servers Manage"), 20).leaf = true
+		_("Servers Manage"), 20)
+	page.leaf = true
+	page.acl_depends = { "luci-app-xray" }
 
 	if luci.sys.call("command -v xray >/dev/null") ~= 0 then
 		return
 	end
 
-	entry({"admin", "services", "xray", "access-control"},
+	page = entry({"admin", "services", "xray", "access-control"},
 		cbi("xray/access-control"),
-		_("Access Control"), 30).leaf = true
+		_("Access Control"), 30)
+	page.leaf = true
+	page.acl_depends = { "luci-app-xray" }
 
-	entry({"admin", "services", "xray", "log"},
+	page = entry({"admin", "services", "xray", "log"},
 		call("action_log"),
-		_("System Log"), 90).leaf = true
+		_("System Log"), 90)
+	page.leaf = true
+	page.acl_depends = { "luci-app-xray" }
 
 	if luci.sys.call("command -v /etc/init.d/dnsmasq-extra >/dev/null") ~= 0 then
 		return
 	end
 
-	entry({"admin", "services", "xray", "gfwlist"},
+	page = entry({"admin", "services", "xray", "gfwlist"},
 		call("action_gfw"),
-		_("GFW-List"), 60).leaf = true
+		_("GFW-List"), 60)
+	page.leaf = true
+	page.acl_depends = { "luci-app-xray" }
 
-	entry({"admin", "services", "xray", "custom"},
+	page = entry({"admin", "services", "xray", "custom"},
 		cbi("xray/gfwlist-custom"),
-		_("Custom-List"), 50).leaf = true
+		_("Custom-List"), 50)
+	page.leaf = true
+	page.acl_depends = { "luci-app-xray" }
 
 end
 

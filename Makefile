@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-xray
-PKG_VERSION:=0.2.1
-PKG_RELEASE:=2
+PKG_VERSION:=0.2.2
+PKG_RELEASE:=1
 
 PKG_LICENSE:=GPLv3
 PKG_LICENSE_FILES:=LICENSE
@@ -68,6 +68,8 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/luci/model/cbi/xray/*.lua $(1)/usr/lib/lua/luci/model/cbi/xray/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/xray
 	$(INSTALL_DATA) ./files/luci/view/xray/*.htm $(1)/usr/lib/lua/luci/view/xray/
+	$(INSTALL_DIR) $(1)/usr/share/rpcd/acl.d
+	$(INSTALL_DATA) ./files/root/usr/share/rpcd/acl.d/luci-app-xray.json $(1)/usr/share/rpcd/acl.d/
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DATA) ./files/root/etc/config/xray $(1)/etc/config/xray
 	$(INSTALL_DIR) $(1)/etc/init.d
