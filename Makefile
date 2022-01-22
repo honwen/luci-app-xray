@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2020-2021 honwen https://github.com/honwen
+# Copyright (C) 2020-2022 honwen https://github.com/honwen
 #
 # This is free software, licensed under the GNU General Public License v3.
 # See /LICENSE for more information.
@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-xray
-PKG_VERSION:=0.2.2
+PKG_VERSION:=0.2.3
 PKG_RELEASE:=1
 
 PKG_LICENSE:=GPLv3

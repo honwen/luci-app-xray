@@ -1,6 +1,6 @@
 #!/bin/sh /etc/rc.common
 #
-# Copyright (C) 2020-2021 honwen <https://github.com/honwen>
+# Copyright (C) 2020-2022 honwen <https://github.com/honwen>
 #
 # This is free software, licensed under the GNU General Public License v3.
 # See /LICENSE for more information.
@@ -208,7 +208,10 @@ EOF
 
 gen_server_config() {
 	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
-	validate_server $1 && cat <<-EOF
+	validate_server $1 && {
+		serverName=$(uci_get_by_name $1 server_name)
+		[ "V$serverName" = "V" ] && serverName=$(uci_get_by_name $1 server)
+		cat <<-EOF
 		    {
 		      "protocol": "$(uci_get_by_name $1 protocol)",
 		      "settings": {
@@ -230,11 +233,12 @@ gen_server_config() {
 		        "network": "tcp",
 		        "security": "${security}",
 		        "${security}Settings": {
-		          "serverName": "$(uci_get_by_name $1 server)"
+		          "serverName": "${serverName}"
 		        }
 		      }
 		    },
 EOF
+	}
 }
 
 gen_config_outbounds() {

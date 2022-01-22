@@ -139,6 +139,9 @@ msgstr "服务器地址"
 msgid "Servers Manage"
 msgstr "服务器管理"
 
+msgid "Server Name"
+msgstr "服务器名(SNI)"
+
 msgid "Server Port"
 msgstr "服务器端口"
 
