@@ -275,6 +275,12 @@ xray_daemon() {
 
 start() {
 	pgrep -f /usr/bin/${NAME} >/dev/null && return 0
+	uci_bool_by_type 'transparent_proxy' 'enable' ||
+		uci_bool_by_type 'port_forward' 'enable' ||
+		uci_bool_by_type 'http_proxy' 'enable' ||
+		uci_bool_by_type 'socks5_proxy' 'enable' ||
+		return 0
+
 	mkdir -p /var/run /var/etc $DNSMASQDIR
 	has_valid_server $(uci_get_by_type general server) && {
 		xray_pre
