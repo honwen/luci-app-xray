@@ -12,6 +12,7 @@ local securitys = {
 	"xtls-splice",
 	"xtls-direct",
 	"tls",
+	"quic",
 }
 
 m = Map(xray, "%s - %s" %{translate("Xray"), translate("Edit Server")})

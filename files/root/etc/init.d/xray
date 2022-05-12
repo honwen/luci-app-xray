@@ -77,15 +77,6 @@ get_lan_hosts() {
 		echo "$(uci_get_by_name $1 type),$(uci_get_by_name $1 host)"
 }
 
-gen_xtls_flow() {
-	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
-	local flow=$(uci_get_by_name $1 security | sed 's+.*-++g')
-	[ "V${flow}" == 'Vxtls' ] && flow='splice'
-	if [ "V${security}" == 'Vxtls' ]; then
-		echo -e "\n                \"flow\": \"xtls-rprx-${flow}\","
-	fi
-}
-
 xray_pre() {
 	DNSconf=$DNSMASQDIR/xray-servers.conf
 	tmpDNSconf=$DNSMASQDIR/xray.conf
@@ -209,8 +200,35 @@ gen_config_inbounds() {
 	EOF
 }
 
-gen_server_config() {
+gen_stream_setting_key() {
+	network=$1
+	security=$2
+	echo $network >/var/run/network
+	echo $security >/var/run/security
+	if [ "V${network}" = "Vquic" ]; then
+		echo -e "\"quicSettings\": {},\n        \"${security}Settings\""
+	else
+		echo "\"${security}Settings\""
+	fi
+}
+
+gen_xtls_flow() {
 	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
+	local flow=$(uci_get_by_name $1 security | sed 's+.*-++g')
+	[ "V${flow}" == 'Vxtls' ] && flow='splice'
+	if [ "V${security}" == 'Vxtls' ]; then
+		echo -e "\n                \"flow\": \"xtls-rprx-${flow}\","
+	fi
+}
+
+gen_server_config() {
+	local network='tcp'
+	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
+	[ "V${security}" = "Vquic" ] && {
+		sysctl -w net.core.rmem_max=250000 >/dev/null
+		network='quic'
+		security='tls'
+	}
 	validate_server $1 && {
 		serverName=$(uci_get_by_name $1 server_name)
 		[ "V$serverName" = "V" ] && serverName=$(uci_get_by_name $1 server)
@@ -233,9 +251,9 @@ gen_server_config() {
 			        ]
 			      },
 			      "streamSettings": {
-			        "network": "tcp",
+			        "network": "${network}",
 			        "security": "${security}",
-			        "${security}Settings": {
+			        $(gen_stream_setting_key ${network} ${security}): {
 			          "serverName": "${serverName}"
 			        }
 			      }
