@@ -37,6 +37,12 @@ msgstr "直接密钥"
 msgid "Disable"
 msgstr "停用"
 
+msgid "Disable DNS Auto-Injection"
+msgstr "停用DNS自动注入"
+
+msgid "Disable HealthCheck"
+msgstr "停用健康检查"
+
 msgid "Edit Server"
 msgstr "编辑服务器"
 

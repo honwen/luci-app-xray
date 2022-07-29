@@ -10,7 +10,7 @@ START=90
 STOP=15
 
 NAME=xray
-EXTRA_COMMANDS="rules watchdog"
+EXTRA_COMMANDS="rules healthcheck"
 CRON_FILE=/etc/crontabs/root
 WATCHDOG_ENDPOINT='accounts.gstatic.com'
 
@@ -77,7 +77,15 @@ get_lan_hosts() {
 		echo "$(uci_get_by_name $1 type),$(uci_get_by_name $1 host)"
 }
 
-xray_pre() {
+xray_cleandns() {
+	uci_bool_by_type general no_dns_injection && return 0
+
+	rm -f $DNSMASQDIR/ss.conf $DNSMASQDIR/ss-servers.conf 2>/dev/null
+}
+
+xray_injectdns() {
+	uci_bool_by_type general no_dns_injection && return 0
+
 	DNSconf=$DNSMASQDIR/xray-servers.conf
 	tmpDNSconf=$DNSMASQDIR/xray.conf
 	echo "all-servers" >$tmpDNSconf
@@ -85,6 +93,7 @@ xray_pre() {
 	for server in $(config_foreach get_server_ips servers); do
 		cat <<-EOF >>$tmpDNSconf
 			ipset=/${server}/xray_spec_dst_bp
+			server=/${server}/#
 			server=/${server}/223.5.5.5
 			server=/${server}/119.29.29.29
 			server=/${server}/114.114.114.114
@@ -94,6 +103,8 @@ xray_pre() {
 		EOF
 	done
 
+	(grep -q 'no-resolv' /etc/dnsmasq.conf /etc/dnsmasq.d/* /var/dnsmasq.d/* /var/etc/dnsmasq.conf.* 2 >/dev/null) &&
+		sed "/\/#$/d" -i $tmpDNSconf
 	sort -u $tmpDNSconf | sed '/\/\//d; /\/127.0.0.1\//d' >$DNSconf
 	rm -f $tmpDNSconf
 
@@ -301,7 +312,7 @@ start() {
 
 	mkdir -p /var/run /var/etc $DNSMASQDIR
 	has_valid_server $(uci_get_by_type general server) && {
-		xray_pre
+		xray_injectdns
 		xray_daemon
 	}
 	uci_bool_by_type 'transparent_proxy' 'enable' && {
@@ -324,25 +335,32 @@ kill_all() {
 stop() {
 	/usr/bin/${NAME}-rules -f
 	kill_all /usr/bin/${NAME}
-	rm -f $DNSMASQDIR/xray.conf $DNSMASQDIR/xray-servers.conf 2>/dev/null
+	xray_cleandns
 	del_cron
 }
 
 add_cron() {
-	sed -i '/xray_watchdog/d' $CRON_FILE
-	echo '0   */3   * * *  rm -f /var/log/xray_watchdog.log 2>&1' >>$CRON_FILE
-	echo '*    *    * * * /etc/init.d/xray watchdog >> /var/log/xray_watchdog.log 2>&1' >>$CRON_FILE
+	[ -f $CRON_FILE ] || return 0
+	uci_bool_by_type transparent_proxy no_healthcheck && return 0
+
+	sed -i '/xray_healthcheck/d' $CRON_FILE
+	echo '0   */3   * * *  rm -f /var/log/xray_healthcheck.log 2>&1' >>$CRON_FILE
+	echo '*    *    * * * /etc/init.d/xray healthcheck >> /var/log/xray_healthcheck.log 2>&1' >>$CRON_FILE
 	/etc/init.d/cron restart
 }
 
 del_cron() {
-	sed -i '/xray_watchdog/d' $CRON_FILE
+	[ -f $CRON_FILE ] || return 0
+	uci_bool_by_type transparent_proxy no_healthcheck && return 0
+
+	sed -i '/xray_healthcheck/d' $CRON_FILE
 	/etc/init.d/cron restart
 }
 
-watchdog() {
+healthcheck() {
 	command -v xray >/dev/null 2>&1 || return 1
 	has_valid_server $(uci_get_by_type general server) && uci_bool_by_type 'transparent_proxy' 'enable' || return 1
+	uci_bool_by_type transparent_proxy no_healthcheck && return 0
 
 	LOGTIME=$(date "+%Y-%m-%d %H:%M:%S")
 	pgrep -f "/var/etc/$NAME.json" >/dev/null 2>&1 || {
