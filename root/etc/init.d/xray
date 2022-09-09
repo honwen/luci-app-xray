@@ -90,7 +90,7 @@ xray_injectdns() {
 	tmpDNSconf=$DNSMASQDIR/xray.conf
 	echo "all-servers" >$tmpDNSconf
 	config_load $NAME
-	for server in $(config_foreach get_server_ips servers); do
+	for server in $(config_foreach get_server_ips servers | sort -u); do
 		cat <<-EOF >>$tmpDNSconf
 			ipset=/${server}/xray_spec_dst_bp
 			server=/${server}/#
@@ -129,7 +129,7 @@ xray_injectdns() {
 start_rules() {
 	config_load $NAME
 	/usr/bin/${NAME}-rules \
-		-s "$(config_foreach get_server_ips servers)" \
+		-s "$(config_foreach get_server_ips servers | sort -u)" \
 		-l "$(uci_get_by_type transparent_proxy local_port 1234)" \
 		-B "$(uci_get_by_type access_control wan_bp_list)" \
 		-b "$(uci_get_by_type access_control wan_bp_ips)" \
