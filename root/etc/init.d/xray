@@ -232,7 +232,7 @@ gen_xtls_flow() {
 	fi
 }
 
-gen_server_config() {
+gen_server_vless_config() {
 	local network='tcp'
 	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
 	[ "V${security}" = "Vquic" ] && {
@@ -271,6 +271,47 @@ gen_server_config() {
 			    },
 		EOF
 	}
+}
+
+gen_server_trojan_config() {
+	validate_server $1 && {
+		serverName=$(uci_get_by_name $1 server_name)
+		[ "V$serverName" = "V" ] && serverName=$(uci_get_by_name $1 server)
+		cat <<-EOF
+			    {
+			      "protocol": "$(uci_get_by_name $1 protocol)",
+			      "settings": {
+			        "servers": [
+			          {
+			            "address": "$(uci_get_by_name $1 server)",
+			            "port": $(uci_get_by_name $1 server_port),
+			            "password": "$(uci_get_by_name $1 id)",
+			            "level": 0
+			          }
+			        ]
+			      },
+			      "streamSettings": {
+			        "network": "tcp",
+			        "security": "tls",
+			        "tlsSettings": {
+			          "serverName": "${serverName}"
+			        }
+			      }
+			    },
+		EOF
+	}
+}
+
+gen_server_config() {
+	local protocol=$(uci_get_by_name $1 protocol)
+	if [ "V${protocol}" = "Vvless" ]; then
+		gen_server_vless_config $1
+	elif [ "V${protocol}" = "Vtrojan" ]; then
+		gen_server_trojan_config $1
+	else
+		echo "# Err: protocol[$protocol] not supported!"
+		exit 1
+	fi
 }
 
 gen_config_outbounds() {

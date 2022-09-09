@@ -7,6 +7,7 @@ local xray = "xray"
 local sid = arg[1]
 local protocols = {
 	"vless",
+	"trojan",
 }
 local securitys = {
 	"xtls-splice",
@@ -57,5 +58,6 @@ o = s:option(ListValue, "security", translate("Security"))
 for _, v in ipairs(securitys) do o:value(v, v:upper()) end
 o.default = 'xtls-splice'
 o.rmempty = false
+o:depends('protocol', 'vless')
 
 return m
