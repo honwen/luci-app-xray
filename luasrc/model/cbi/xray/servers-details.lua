@@ -46,7 +46,7 @@ o = s:option(Value, "server_name", translate("Server Name"))
 o.datatype = "host"
 o.rmempty = true
 
-o = s:option(Value, "id", translate("ID"))
+o = s:option(Value, "id", translate("ID/AUTH"))
 o.password = true
 
 o = s:option(ListValue, "protocol", translate("Protocol"))
@@ -58,6 +58,5 @@ o = s:option(ListValue, "security", translate("Security"))
 for _, v in ipairs(securitys) do o:value(v, v:upper()) end
 o.default = 'xtls-splice'
 o.rmempty = false
-o:depends('protocol', 'vless')
 
 return m

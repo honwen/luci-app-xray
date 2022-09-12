@@ -234,7 +234,7 @@ gen_xtls_flow() {
 
 gen_server_vless_config() {
 	local network='tcp'
-	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
+	local security=$(uci_get_by_name $1 security 'tls' | sed 's+-.*++g')
 	[ "V${security}" = "Vquic" ] && {
 		sysctl -w net.core.rmem_max=250000 >/dev/null
 		network='quic'
@@ -274,6 +274,13 @@ gen_server_vless_config() {
 }
 
 gen_server_trojan_config() {
+	local network='tcp'
+	local security=$(uci_get_by_name $1 security 'tls' | sed 's+-.*++g')
+	[ "V${security}" = "Vquic" ] && {
+		sysctl -w net.core.rmem_max=250000 >/dev/null
+		network='quic'
+		security='tls'
+	}
 	validate_server $1 && {
 		serverName=$(uci_get_by_name $1 server_name)
 		[ "V$serverName" = "V" ] && serverName=$(uci_get_by_name $1 server)
@@ -291,9 +298,9 @@ gen_server_trojan_config() {
 			        ]
 			      },
 			      "streamSettings": {
-			        "network": "tcp",
-			        "security": "tls",
-			        "tlsSettings": {
+			        "network": "${network}",
+			        "security": "${security}",
+			        $(gen_stream_setting_key ${network} ${security}): {
 			          "serverName": "${serverName}"
 			        }
 			      }
@@ -338,7 +345,7 @@ gen_config_file() {
 
 xray_daemon() {
 	command -v xray >/dev/null 2>&1 || return 0
-	(/usr/bin/${NAME} -c $(gen_config_file) >/var/log/xray.log 2>&1) &
+	(/usr/bin/${NAME} run -c $(gen_config_file) >/var/log/xray.log 2>&1) &
 	for _ in $(seq 10); do if pgrep -f /usr/bin/${NAME} >/dev/null; then break; else sleep 1; fi; done
 	pgrep -f /usr/bin/${NAME} >/dev/null
 }
