@@ -41,6 +41,10 @@ uci_bool_by_type() {
 	return 1
 }
 
+random_id() {
+	/usr/bin/${NAME} uuid | sed 's+-.*++g'
+}
+
 validate_server() {
 	[ "$(uci get $NAME.$1 2>/dev/null)" = "servers" ]
 }
@@ -245,6 +249,7 @@ gen_server_vless_config() {
 		[ "V$serverName" = "V" ] && serverName=$(uci_get_by_name $1 server)
 		cat <<-EOF
 			    {
+			      "tag": "dummy-$(random_id)",
 			      "protocol": "$(uci_get_by_name $1 protocol)",
 			      "settings": {
 			        "vnext": [
@@ -286,6 +291,7 @@ gen_server_trojan_config() {
 		[ "V$serverName" = "V" ] && serverName=$(uci_get_by_name $1 server)
 		cat <<-EOF
 			    {
+			      "tag": "dummy-$(random_id)",
 			      "protocol": "$(uci_get_by_name $1 protocol)",
 			      "settings": {
 			        "servers": [
@@ -309,12 +315,47 @@ gen_server_trojan_config() {
 	}
 }
 
+gen_server_shadowsocks_config() {
+	validate_server $1 && {
+		cat <<-EOF
+			    {
+			      "tag": "dummy-$(random_id)",
+			      "protocol": "$(uci_get_by_name $1 protocol)",
+			      "settings": {$(get_plugin_config $1)
+			        "servers": [
+			          {
+			            "address": "$(uci_get_by_name $1 server)",
+			            "port": $(uci_get_by_name $1 server_port),
+			            "password": "$(uci_get_by_name $1 id)",
+			            "method": "$(uci_get_by_name $1 method)"
+			          }
+			        ]
+			      }
+			    },
+		EOF
+	}
+}
+
+get_plugin_config() {
+	local plugin=$(which $(uci_get_by_name $1 plugin))
+	local plugin_opts=$(uci_get_by_name $1 plugin_opts)
+	if [ -n "$plugin" ]; then
+		echo $plugin >>/var/run/xray-plugin
+		echo -e "\n        \"plugin\": \"$plugin\","
+		if [ -n "$plugin_opts" ]; then
+			echo "        \"pluginOpts\": \"$plugin_opts\","
+		fi
+	fi
+}
+
 gen_server_config() {
 	local protocol=$(uci_get_by_name $1 protocol)
 	if [ "V${protocol}" = "Vvless" ]; then
 		gen_server_vless_config $1
 	elif [ "V${protocol}" = "Vtrojan" ]; then
 		gen_server_trojan_config $1
+	elif [ "V${protocol}" = "Vshadowsocks" ]; then
+		gen_server_shadowsocks_config $1
 	else
 		echo "# Err: protocol[$protocol] not supported!"
 		exit 1
@@ -331,10 +372,31 @@ gen_config_outbounds() {
 
 gen_config_file() {
 	local config_file=/var/etc/$NAME.json
+	local balancer_name="balancer-$(random_id)"
 	cat <<-EOF >$config_file
 		{
 			$(gen_config_inbounds)
 			$(gen_config_outbounds)
+		  "routing": {
+		    "domainStrategy": "AsIs",
+		    "domainMatcher": "mph",
+		    "rules": [{
+		      "type": "field",
+		      "network": "tcp,udp",
+		      "balancerTag": "${balancer_name}"
+		    }],
+		    "balancers": [{
+		      "tag": "${balancer_name}",
+		      "selector": ["dummy"],
+		      "strategy": {
+		      "type": "$(uci_get_by_type general strategy leastPing)"
+		      }
+		    }]
+		  },
+		  "observatory": {
+		    "subjectSelector": [ "outbound" ],
+		    "probeURL": "http://${WATCHDOG_ENDPOINT}/generate_204"
+		  },
 		  "log": {
 		    "loglevel": "warning"
 		  }
@@ -377,12 +439,18 @@ boot() {
 }
 
 kill_all() {
-	kill -9 $(pgrep -f $@) >/dev/null 2>&1
+	for it in $@; do
+		kill -9 $(pgrep -f $it) >/dev/null 2>&1
+	done
 }
 
 stop() {
 	/usr/bin/${NAME}-rules -f
 	kill_all /usr/bin/${NAME}
+	if [ -f /var/run/xray-plugin ]; then
+		kill_all $(sort -u /var/run/xray-plugin)
+		rm -f /var/run/xray-plugin
+	fi
 	xray_cleandns
 	del_cron
 }
