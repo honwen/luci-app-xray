@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-xray
-PKG_VERSION:=0.5.0
+PKG_VERSION:=0.5.1
 PKG_RELEASE:=1
 PKG_MAINTAINER:=honwen <https://github.com/honwen>
 

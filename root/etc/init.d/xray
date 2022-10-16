@@ -218,8 +218,12 @@ gen_config_inbounds() {
 gen_stream_setting_key() {
 	network=$1
 	security=$2
+	ws_path=$3
 	echo $network >/var/run/network
 	echo $security >/var/run/security
+	if [ "V${ws_path}" != "V" ]; then
+		echo -en "\"wsSettings\": { \"path\": \"${ws_path}\" },\n        "
+	fi
 	if [ "V${network}" = "Vquic" ]; then
 		echo -e "\"quicSettings\": {},\n        \"${security}Settings\""
 	else
@@ -243,6 +247,12 @@ gen_server_vless_config() {
 		sysctl -w net.core.rmem_max=250000 >/dev/null
 		network='quic'
 		security='tls'
+	}
+	[ "V${security}" = "Vwss" ] && {
+		sysctl -w net.core.rmem_max=250000 >/dev/null
+		network='ws'
+		security='tls'
+		ws_path=$(uci_get_by_name $1 ws_path '/')
 	}
 	validate_server $1 && {
 		serverName=$(uci_get_by_name $1 server_name)
@@ -269,7 +279,7 @@ gen_server_vless_config() {
 			      "streamSettings": {
 			        "network": "${network}",
 			        "security": "${security}",
-			        $(gen_stream_setting_key ${network} ${security}): {
+			        $(gen_stream_setting_key ${network} ${security} $(uci_get_by_name $1 ws_path '/')): {
 			          "serverName": "${serverName}"
 			        }
 			      }

@@ -14,6 +14,7 @@ local securitys = {
 	"xtls-splice",
 	"xtls-direct",
 	"tls",
+	"wss",
 	"quic",
 }
 local encrypts = {
@@ -82,6 +83,11 @@ o:depends('protocol', 'vless')
 o:depends('protocol', 'trojan')
 o.default = 'xtls-splice'
 o.rmempty = false
+
+o = s:option(Value, "ws_path", translate("Websocket Path"))
+o:depends('security', 'wss')
+o.placeholder = "/"
+o.rmempty = false
 -- [[ vless/trojan ]]--
 
 -- [[ shadowsocks ]]--
@@ -93,10 +99,12 @@ o.rmempty = false
 o = s:option(Value, "plugin", translate("Plugin Name"))
 o:depends('protocol', 'shadowsocks')
 o.placeholder = "eg: v2ray-plugin"
+o.rmempty = false
 
 o = s:option(Value, "plugin_opts", translate("Plugin Arguments"))
 o:depends('protocol', 'shadowsocks')
 o.placeholder = "eg: tls;host=www.bing.com;path=/websocket"
+o.rmempty = false
 -- [[ shadowsocks ]]--
 
 return m
