@@ -347,10 +347,15 @@ gen_server_shadowsocks_config() {
 }
 
 get_plugin_config() {
-	local plugin=$(which $(uci_get_by_name $1 plugin))
+	local plugin=$(uci_get_by_name $1 plugin)
 	local plugin_opts=$(uci_get_by_name $1 plugin_opts)
 	if [ -n "$plugin" ]; then
-		echo $plugin >>/var/run/xray-plugin
+		if [ "V$plugin" = "Vv2ray-plugin" -o "V$plugin" = "Vxray-plugin" ]; then
+			plugin="v2ray-plugin"
+		else
+			plugin=$(which $plugin)
+			echo $plugin >>/var/run/xray-plugin
+		fi
 		echo -e "\n        \"plugin\": \"$plugin\","
 		if [ -n "$plugin_opts" ]; then
 			echo "        \"pluginOpts\": \"$plugin_opts\","
