@@ -6,6 +6,7 @@ local m, s, o
 local xray = "xray"
 local sid = arg[1]
 local protocols = {
+	"socks",
 	"vless",
 	"trojan",
 	"shadowsocks",
@@ -56,6 +57,11 @@ s.addremove = false
 o = s:option(Value, "alias", translate("Alias(optional)"))
 o.rmempty = true
 
+o = s:option(ListValue, "protocol", translate("Protocol"))
+for _, v in ipairs(protocols) do o:value(v, v:upper()) end
+o.default = 'vless'
+o.rmempty = false
+
 o = s:option(Value, "server", translate("Server Address"))
 o.datatype = "host"
 o.rmempty = false
@@ -65,16 +71,16 @@ o.datatype = "port"
 o.rmempty = false
 
 o = s:option(Value, "server_name", translate("Server Name"))
+o:depends('protocol', 'vless')
+o:depends('protocol', 'trojan')
 o.datatype = "host"
 o.rmempty = true
 
 o = s:option(Value, "id", translate("ID/AUTH"))
+o:depends('protocol', 'vless')
+o:depends('protocol', 'trojan')
+o:depends('protocol', 'shadowsocks')
 o.password = true
-
-o = s:option(ListValue, "protocol", translate("Protocol"))
-for _, v in ipairs(protocols) do o:value(v, v:upper()) end
-o.default = 'vless'
-o.rmempty = false
 
 -- [[ vless/trojan ]]--
 o = s:option(ListValue, "security", translate("Security"))
@@ -97,14 +103,16 @@ o:depends('protocol', 'shadowsocks')
 o.rmempty = false
 
 o = s:option(Value, "plugin", translate("Plugin Name"))
+o:depends('protocol', 'socks')
 o:depends('protocol', 'shadowsocks')
-o.placeholder = "eg: v2ray-plugin"
-o.rmempty = false
+-- o.placeholder = "eg: v2ray-plugin"
+o.rmempty = true
 
 o = s:option(Value, "plugin_opts", translate("Plugin Arguments"))
+o:depends('protocol', 'socks')
 o:depends('protocol', 'shadowsocks')
-o.placeholder = "eg: tls;host=www.bing.com;path=/websocket"
-o.rmempty = false
+-- o.placeholder = "eg: tls;host=www.bing.com;path=/websocket"
+o.rmempty = true
 -- [[ shadowsocks ]]--
 
 return m
