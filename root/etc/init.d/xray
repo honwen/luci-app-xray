@@ -225,8 +225,6 @@ gen_stream_setting_key() {
 	network=$1
 	security=$2
 	ws_path=$3
-	echo $network >/var/run/network
-	echo $security >/var/run/security
 	if [ "V${ws_path}" != "V" ]; then
 		echo -en "\"wsSettings\": { \"path\": \"${ws_path}\" },\n        "
 	fi
@@ -248,7 +246,12 @@ gen_xtls_flow() {
 
 gen_server_vless_config() {
 	local network='tcp'
-	local security=$(uci_get_by_name $1 security 'tls' | sed 's+-.*++g')
+	local security=$(uci_get_by_name $1 security 'tls')
+	if echo $security | grep -q 'vision'; then
+		security='tls'
+	else
+		security=$(echo $security | sed 's+-.*++g')
+	fi
 	[ "V${security}" = "Vquic" ] && {
 		sysctl -w net.core.rmem_max=250000 >/dev/null
 		network='quic'
@@ -285,7 +288,7 @@ gen_server_vless_config() {
 			      "streamSettings": {
 			        "network": "${network}",
 			        "security": "${security}",
-			        $(gen_stream_setting_key ${network} ${security} $(uci_get_by_name $1 ws_path '/')): {
+			        $(gen_stream_setting_key ${network} ${security} $(uci_get_by_name $1 ws_path)): {
 			          "serverName": "${serverName}"
 			        }
 			      }

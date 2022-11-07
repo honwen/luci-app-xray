@@ -14,6 +14,7 @@ local protocols = {
 local securitys = {
 	"xtls-splice",
 	"xtls-direct",
+	"xtls-vision",
 	"tls",
 	"wss",
 	"quic",
