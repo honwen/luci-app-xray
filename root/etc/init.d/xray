@@ -42,11 +42,11 @@ uci_bool_by_type() {
 }
 
 random_id() {
-	/usr/bin/${NAME} uuid | sed 's+-.*++g'
+	/usr/bin/${NAME} uuid | cut -c1-4
 }
 
 random_port() {
-	offset=$(random_id | tr -d '[a-zA-Z]' | cut -c1-3)
+	offset=$(/usr/bin/${NAME} uuid | tr -d '[a-zA-Z-]' | cut -c1-3)
 	[ "V${offset}" = "V" ] && offset=1
 	echo $((offset + 12000))
 }
@@ -268,7 +268,7 @@ gen_server_vless_config() {
 		[ "V$serverName" = "V" ] && serverName=$(uci_get_by_name $1 server)
 		cat <<-EOF
 			    {
-			      "tag": "dummy-$(random_id)",
+			      "tag": "OutB-vless-[$(uci_get_by_name $1 server)-${network}-${security}]-$(random_id)",
 			      "protocol": "$(uci_get_by_name $1 protocol)",
 			      "settings": {
 			        "vnext": [
@@ -310,7 +310,7 @@ gen_server_trojan_config() {
 		[ "V$serverName" = "V" ] && serverName=$(uci_get_by_name $1 server)
 		cat <<-EOF
 			    {
-			      "tag": "dummy-$(random_id)",
+			      "tag": "OutB-trojan-[${serverName}]-$(random_id)",
 			      "protocol": "$(uci_get_by_name $1 protocol)",
 			      "settings": {
 			        "servers": [
@@ -338,7 +338,7 @@ gen_server_shadowsocks_config() {
 	validate_server $1 && {
 		cat <<-EOF
 			    {
-			      "tag": "dummy-$(random_id)",
+			      "tag": "OutB-ss-[$(uci_get_by_name $1 server)]-$(random_id)",
 			      "protocol": "$(uci_get_by_name $1 protocol)",
 			      "settings": {$(get_plugin_config $1)
 			        "servers": [
@@ -373,7 +373,7 @@ gen_server_socks_config() {
 		fi
 		cat <<-EOF
 			    {
-			      "tag": "dummy-$(random_id)",
+			      "tag": "OutB-socks-[$(basename ${plugin})]-$(random_id)",
 			      "protocol": "$(uci_get_by_name $1 protocol)",
 			      "settings": {
 			        "servers": [
@@ -444,14 +444,14 @@ gen_config_file() {
 		    }],
 		    "balancers": [{
 		      "tag": "${balancer_name}",
-		      "selector": ["dummy"],
+		      "selector": ["OutB"],
 		      "strategy": {
 		      "type": "$(uci_get_by_type general strategy leastLoad)"
 		      }
 		    }]
 		  },
 		  "observatory": {
-		    "subjectSelector": [ "dummy" ],
+		    "subjectSelector": [ "OutB" ],
 		    "probeURL": "http://${WATCHDOG_ENDPOINT}/generate_204",
 		    "probeInterval": "9s"
 		  },
@@ -465,6 +465,15 @@ gen_config_file() {
 
 xray_daemon() {
 	command -v xray >/dev/null 2>&1 || return 0
+	if [ -e /proc/sys/fs/nr_open ] && [ -e /proc/sys/fs/file-max ]; then
+		[ $(cat /proc/sys/fs/nr_open) -lt 1048576 ] && echo 1048576 >/proc/sys/fs/nr_open   # 1048576=2^31
+		[ $(cat /proc/sys/fs/file-max) -lt 2097152 ] && echo 2097152 >/proc/sys/fs/file-max # 2097152=2^32
+		limit=$(cat /proc/sys/fs/nr_open)
+	else
+		limit=65535
+	fi
+	while (! ulimit -SHn $limit) && [ $limit -gt 1024 ]; do limit=$((limit / 2)); done
+	ulimit -SHn $limit
 	config_file=$(gen_config_file)
 	/var/run/xray-plugin.daemon.sh 2>/dev/null
 	(/usr/bin/${NAME} run -c ${config_file} >/var/log/xray.log 2>&1) &
