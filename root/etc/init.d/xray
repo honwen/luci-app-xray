@@ -555,6 +555,12 @@ healthcheck() {
 		start >/dev/null 2>&1
 		return 0
 	}
+	iptables -n -t nat -L PREROUTING | grep -q '_SPEC_LAN_DG' || {
+		echo "[${LOGTIME}] Problem decteted, restarting ${NAME}..."
+		stop >/dev/null 2>&1
+		start >/dev/null 2>&1
+		return 0
+	}
 
 	cat_connect() {
 		target="$1"
