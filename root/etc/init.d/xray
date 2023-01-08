@@ -46,9 +46,8 @@ random_id() {
 }
 
 random_port() {
-	offset=$(/usr/bin/${NAME} uuid | tr -d '[a-zA-Z-]' | cut -c1-3)
-	[ "V${offset}" = "V" ] && offset=1
-	echo $((offset + 12000))
+	offset=$(/usr/bin/${NAME} uuid | tr -d '[a-zA-Z-]' | cut -c1-3 | sed 's+^0*++g')
+	echo $((offset + 12000)) 2>/dev/null || random_port
 }
 
 validate_server() {
