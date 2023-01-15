@@ -1,6 +1,6 @@
 #!/bin/sh /etc/rc.common
 #
-# Copyright (C) 2020-2022 honwen <https://github.com/honwen>
+# Copyright (C) 2020-2023 honwen <https://github.com/honwen>
 #
 # This is free software, licensed under the GNU General Public License v3.
 # See /LICENSE for more information.
@@ -11,6 +11,7 @@ STOP=15
 
 NAME=xray
 EXTRA_COMMANDS="rules healthcheck"
+EXTRA_HELP="	rules		Start IPTABLES inject\n	healthcheck	Check if service health"
 CRON_FILE=/etc/crontabs/root
 WATCHDOG_ENDPOINT='accounts.gstatic.com'
 
@@ -474,6 +475,7 @@ xray_daemon() {
 	while (! ulimit -SHn $limit) && [ $limit -gt 1024 ]; do limit=$((limit / 2)); done
 	ulimit -SHn $limit
 	config_file=$(gen_config_file)
+	kill_all $(sort -u /var/run/xray-plugin) 2>/dev/null
 	/var/run/xray-plugin.daemon.sh 2>/dev/null
 	(/usr/bin/${NAME} run -c ${config_file} >/var/log/xray.log 2>&1) &
 	for _ in $(seq 10); do if pgrep -f /usr/bin/${NAME} >/dev/null; then break; else sleep 1; fi; done
