@@ -460,6 +460,10 @@ gen_config_outbounds() {
 gen_config_file() {
 	local config_file=/var/etc/$NAME.json
 	local balancer_name="balancer-$(random_id)"
+	local strategy="$(uci_get_by_type general strategy leastLoad)"
+	[ "V${strategy}" = "VleastLoad" ] && xray version | grep -q 'Xray' && {
+		strategy="leastPing"
+	}
 	cat <<-EOF >$config_file
 		{
 			$(gen_config_inbounds)
@@ -474,7 +478,7 @@ gen_config_file() {
 		      "tag": "${balancer_name}",
 		      "selector": ["OutB"],
 		      "strategy": {
-		      "type": "$(uci_get_by_type general strategy leastLoad)"
+		        "type": "${strategy}"
 		      }
 		    }]
 		  },
