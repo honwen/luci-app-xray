@@ -101,6 +101,8 @@ xray_cleandns() {
 xray_injectdns() {
 	uci_bool_by_type general no_dns_injection && return 0
 
+	echo >&2 "# Info: $NAME dnsmasq injecting..."
+
 	DNSconf=$DNSMASQDIR/xray-servers.conf
 	tmpDNSconf=$DNSMASQDIR/xray.conf
 	echo "all-servers" >$tmpDNSconf
@@ -130,15 +132,23 @@ xray_injectdns() {
 		echo "server=/${WATCHDOG_ENDPOINT}/80.80.80.80" >>$DNSconf
 	}
 
+	DNSPROBE_DOMAIN='t.cn'
 	cat <<-EOF >>$DNSconf
-		server=/t.cn/223.5.5.5
-		server=/t.cn/119.29.29.29
-		server=/t.cn/114.114.114.114
+		server=/$DNSPROBE_DOMAIN/223.5.5.5
+		server=/$DNSPROBE_DOMAIN/119.29.29.29
+		server=/$DNSPROBE_DOMAIN/114.114.114.114
 	EOF
 
-	/etc/init.d/dnsmasq restart >/dev/null 2>&1
+	/etc/init.d/dnsmasq reload >/dev/null 2>&1
 	# wait-for-dns, timeout 10s
-	for _ in $(seq 10); do if ping -4 -q -c 1 -s 0 -W 1 -w 1 t.cn >/dev/null 2>&1; then break; fi; done
+	if which wait4x >/dev/null 2>&1; then # use [wait4x]
+		wait4x http http://$DNSPROBE_DOMAIN --no-redirect -q
+	elif which wait-for >/dev/null 2>&1; then # use [wait-for]
+		wait-for -t=10s http --url=http://$DNSPROBE_DOMAIN >/dev/null 2>&1
+	else # use [ping]
+		for _ in $(seq 10); do if ping -4 -q -c 1 -s 0 -W 1 -w 1 $DNSPROBE_DOMAIN >/dev/null 2>&1; then break; fi; done
+	fi
+	echo >&2 "# Info: $NAME dnsmasq injected."
 }
 
 start_rules() {
@@ -382,7 +392,7 @@ gen_server_shadowsocks_config() {
 			    {
 			      "tag": "OutB-ss-${tag}",
 			      "protocol": "$(uci_get_by_name $1 protocol)",
-			      "settings": {$(get_plugin_config $1)
+			      "settings": {$(get_shadowsocks_plugin_config $1)
 			        "servers": [
 			          {
 			            "address": "$(uci_get_by_name $1 server)",
@@ -410,6 +420,7 @@ gen_server_socks_config() {
 		fi
 		if [ "V$plugin" != "V" ]; then
 			plugin=$(which $plugin)
+			echo >&2 "# Info: socks(:$server_port)-extra-plugin[$plugin]"
 			echo $plugin >>${PLUGIN_FILE}
 			echo "${plugin} ${plugin_opts} >/var/log/xray.$1.log 2>&1 &" |
 				sed "s+_RANDDOM_+${server_port}+g" >>${PLUGIN_FILE}.daemon.sh
@@ -437,7 +448,7 @@ gen_server_socks_config() {
 	}
 }
 
-get_plugin_config() {
+get_shadowsocks_plugin_config() {
 	local plugin=$(uci_get_by_name $1 plugin)
 	local plugin_opts=$(uci_get_by_name $1 plugin_opts)
 	if [ "V$plugin" != "V" ]; then
@@ -447,6 +458,7 @@ get_plugin_config() {
 			plugin=$(which $plugin)
 			echo $plugin >>${PLUGIN_FILE}
 		fi
+		echo >&2 "# Info: SIP003[$plugin]"
 		echo -e "\n        \"plugin\": \"$plugin\","
 		if [ -n "$plugin_opts" ]; then
 			echo "        \"pluginOpts\": \"$plugin_opts\","
@@ -456,6 +468,7 @@ get_plugin_config() {
 
 gen_server_config() {
 	local protocol=$(uci_get_by_name $1 protocol)
+	echo >&2 "# Info: config@protocol[$protocol]"
 	if [ "V${protocol}" = "Vsocks" ]; then
 		gen_server_socks_config $1
 	elif [ "V${protocol}" = "Vvless" ]; then
@@ -465,7 +478,7 @@ gen_server_config() {
 	elif [ "V${protocol}" = "Vshadowsocks" ]; then
 		gen_server_shadowsocks_config $1
 	else
-		echo "# Err: protocol[$protocol] not supported!"
+		echo >&2 "# Err: protocol[$protocol] not supported!"
 		exit 1
 	fi
 }
@@ -541,6 +554,7 @@ xray_plugin_daemon() {
 		chmod a+x ${PLUGIN_FILE}.daemon.sh
 		${PLUGIN_FILE}.daemon.sh
 	}
+	echo >&2 "# Info: xray-plugin daemon init."
 }
 
 xray_daemon() {
@@ -557,11 +571,19 @@ xray_daemon() {
 	config_file=$(gen_config_file)
 	xray_plugin_daemon 2>/dev/null
 	(/usr/bin/${NAME} run -c ${config_file} >/var/log/xray.log 2>&1) &
-	for _ in $(seq 10); do if pgrep -f /usr/bin/${NAME} >/dev/null; then break; else sleep 1; fi; done
+	# wait-for-dns, timeout 10s
+	if which wait4x >/dev/null 2>&1; then # use [wait4x]
+		wait4x tcp 127.0.0.1:$(sed -n 's/.*"port".*: *\(.*\),/\1/p' ${config_file} | head -n1) --connection-timeout=300ms -q
+	elif which wait-for >/dev/null 2>&1; then # use [wait-for]
+		wait-for -t=10s net --address 127.0.0.1:$(sed -n 's/.*"port".*: *\(.*\),/\1/p' ${config_file} | head -n1) >/dev/null 2>&1
+	else # use [pgrep]
+		for _ in $(seq 10); do if pgrep -f /usr/bin/${NAME} >/dev/null; then break; else sleep 1; fi; done
+	fi
 	pgrep -f /usr/bin/${NAME} >/dev/null
 }
 
 start() {
+	echo >&2 "# Info: starting..."
 	pgrep -f /usr/bin/${NAME} >/dev/null && return 0
 	uci_bool_by_type 'transparent_proxy' 'enable' ||
 		uci_bool_by_type 'port_forward' 'enable' ||
@@ -573,11 +595,14 @@ start() {
 	has_valid_server $(uci_get_by_type general server) && {
 		xray_injectdns
 		xray_daemon
+		echo >&2 "# Info: xray daemon init."
 	}
 	uci_bool_by_type 'transparent_proxy' 'enable' && {
 		rules
 		add_cron
+		echo >&2 "# Info: transparent proxy init."
 	}
+	echo >&2 "# Info: started."
 }
 
 boot() {
@@ -594,6 +619,7 @@ kill_all() {
 }
 
 stop() {
+	echo >&2 "# Info: stopping..."
 	/usr/bin/${NAME}-rules -f
 	kill_all /usr/bin/${NAME}
 	if [ -f ${PLUGIN_FILE} ]; then
@@ -603,6 +629,7 @@ stop() {
 	rm -rf /var/log/xray*.log
 	xray_cleandns
 	del_cron
+	echo >&2 "# Info: stopped"
 }
 
 add_cron() {
@@ -683,8 +710,10 @@ healthcheck() {
 	if [ "Z$?" = "Z0" ]; then
 		echo "[${LOGTIME}] ${NAME} No Problem."
 	else
+		# cat_connect "http://wifi.vivo.com/generate_204"
 		# cat_connect "http://wifi.vivo.com.cn/generate_204"
 		# cat_connect "http://www.qualcomm.cn/generate_204"
+		# cat_connect "http://connectivitycheck.platform.hicloud.com/generate_204"
 		cat_connect "http://${DNSPOD}/d"
 		if [ "Z$?" = "Z0" ]; then
 			echo "[${LOGTIME}] Problem decteted, restarting ${NAME}..."
