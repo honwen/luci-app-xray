@@ -44,12 +44,20 @@ uci_bool_by_type() {
 	return 1
 }
 
+xray_bin() {
+	if grep -q 'v2ray-sing' ${PLUGIN_FILE} 2>/dev/null; then
+		which v2ray-sing
+	else
+		which xray
+	fi
+}
+
 random_id() {
-	/usr/bin/${NAME} uuid | cut -c1-4
+	$(xray_bin) uuid | cut -c1-4
 }
 
 random_port() {
-	offset=$(/usr/bin/${NAME} uuid | tr -d '[a-zA-Z-]' | cut -c1-3 | sed 's+^0*++g')
+	offset=$($(xray_bin) uuid | tr -d '[a-zA-Z-]' | cut -c1-3 | sed 's+^0*++g')
 	echo $((offset + 12000)) 2>/dev/null || random_port
 }
 
@@ -139,7 +147,7 @@ xray_injectdns() {
 		server=/$DNSPROBE_DOMAIN/114.114.114.114
 	EOF
 
-	/etc/init.d/dnsmasq reload >/dev/null 2>&1
+	([ -x /etc/init.d/dnsmasq-extra ] && /etc/init.d/dnsmasq reload || /etc/init.d/dnsmasq restart) >/dev/null 2>&1
 	# wait-for-dns, timeout 10s
 	if which wait4x >/dev/null 2>&1; then # use [wait4x]
 		wait4x http http://$DNSPROBE_DOMAIN --no-redirect -q
@@ -168,7 +176,7 @@ start_rules() {
 }
 
 rules() {
-	pgrep -f /usr/bin/${NAME} >/dev/null || return 0
+	pgrep -f $(xray_bin) >/dev/null || return 0
 	start_rules || /usr/bin/${NAME}-rules -f
 }
 
@@ -452,6 +460,12 @@ get_shadowsocks_plugin_config() {
 	local plugin=$(uci_get_by_name $1 plugin)
 	local plugin_opts=$(uci_get_by_name $1 plugin_opts)
 	if [ "V$plugin" != "V" ]; then
+		if which v2ray-sing >/dev/null 2>&1; then
+			echo '# v2ray-sing' >>${PLUGIN_FILE}
+		else
+			echo >&2 "# Err: [https://github.com/SagerNet/v2ray-core] is needed to support SIP003"
+			exit 1
+		fi
 		if [ "V$plugin" = "Vv2ray-plugin" -o "V$plugin" = "Vxray-plugin" ]; then
 			plugin="v2ray-plugin"
 		else
@@ -549,7 +563,7 @@ gen_config_file() {
 }
 
 xray_plugin_daemon() {
-	[ -e ${PLUGIN_FILE} ] && kill_all $(sort -u ${PLUGIN_FILE})
+	[ -e ${PLUGIN_FILE} ] && kill_all $(sort -u ${PLUGIN_FILE} | grep -v '^#')
 	[ -e ${PLUGIN_FILE}.daemon.sh ] && {
 		chmod a+x ${PLUGIN_FILE}.daemon.sh
 		${PLUGIN_FILE}.daemon.sh
@@ -570,21 +584,21 @@ xray_daemon() {
 	ulimit -SHn $limit
 	config_file=$(gen_config_file)
 	xray_plugin_daemon 2>/dev/null
-	(/usr/bin/${NAME} run -c ${config_file} >/var/log/xray.log 2>&1) &
+	($(xray_bin) run -c ${config_file} >/var/log/xray.log 2>&1) &
 	# wait-for-dns, timeout 10s
 	if which wait4x >/dev/null 2>&1; then # use [wait4x]
 		wait4x tcp 127.0.0.1:$(sed -n 's/.*"port".*: *\(.*\),/\1/p' ${config_file} | head -n1) --connection-timeout=300ms -q
 	elif which wait-for >/dev/null 2>&1; then # use [wait-for]
 		wait-for -t=10s net --address 127.0.0.1:$(sed -n 's/.*"port".*: *\(.*\),/\1/p' ${config_file} | head -n1) >/dev/null 2>&1
 	else # use [pgrep]
-		for _ in $(seq 10); do if pgrep -f /usr/bin/${NAME} >/dev/null; then break; else sleep 1; fi; done
+		for _ in $(seq 10); do if pgrep -f $(xray_bin) >/dev/null; then break; else sleep 1; fi; done
 	fi
-	pgrep -f /usr/bin/${NAME} >/dev/null
+	pgrep -f $(xray_bin) >/dev/null
 }
 
 start() {
 	echo >&2 "# Info: starting..."
-	pgrep -f /usr/bin/${NAME} >/dev/null && return 0
+	pgrep -f $(xray_bin) >/dev/null && return 0
 	uci_bool_by_type 'transparent_proxy' 'enable' ||
 		uci_bool_by_type 'port_forward' 'enable' ||
 		uci_bool_by_type 'http_proxy' 'enable' ||
@@ -621,7 +635,7 @@ kill_all() {
 stop() {
 	echo >&2 "# Info: stopping..."
 	/usr/bin/${NAME}-rules -f
-	kill_all /usr/bin/${NAME}
+	kill_all $(xray_bin)
 	if [ -f ${PLUGIN_FILE} ]; then
 		kill_all $(sort -u ${PLUGIN_FILE})
 		rm -f ${PLUGIN_FILE}*
