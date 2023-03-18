@@ -275,9 +275,22 @@ gen_stream_setting_key() {
 	fi
 }
 
+gen_reality_settings() {
+	uci_get_by_name $1 security | grep -q 'reality' || return
+	echo >&2 "# Info: vless@reality[utls@chrome]"
+	cat <<-EOF
+		,
+		          "fingerprint": "chrome",
+		          "publicKey": "$(uci_get_by_name $1 public_key)",
+		          "shortId": "$(uci_get_by_name $1 short_id '')",
+		          "spiderX": "/$(random_id)"
+	EOF
+}
+
 gen_xtls_flow() {
-	local security=$(uci_get_by_name $1 security | sed 's+-.*++g')
-	local flow=$(uci_get_by_name $1 security | sed 's+.*-++g')
+	local security=$(uci_get_by_name $1 security | sed 's+@.*$++g' | sed 's+-.*++g')
+	local flow=$(uci_get_by_name $1 security | sed 's+@.*$++g' | sed 's+.*-++g')
+	[ "V${security}" == 'Vh2' ] && return
 	[ "V${flow}" == 'Vxtls' ] && flow='splice'
 	if [ "V${security}" == 'Vxtls' ]; then
 		echo -e "\n                \"flow\": \"xtls-rprx-${flow}\","
@@ -287,7 +300,12 @@ gen_xtls_flow() {
 gen_server_vless_config() {
 	local network='tcp'
 	local security=$(uci_get_by_name $1 security 'tls')
-	if echo $security | grep -q 'vision'; then
+	if echo $security | grep -q 'reality'; then
+		if echo ${security} | grep -q '^h2'; then
+			network='h2'
+		fi
+		security='reality'
+	elif echo $security | grep -q 'vision'; then
 		security='tls'
 	else
 		security=$(echo $security | sed 's+-.*++g')
@@ -336,7 +354,7 @@ gen_server_vless_config() {
 			        "network": "${network}",
 			        "security": "${security}",
 			        $(gen_stream_setting_key ${network} ${security} $(uci_get_by_name $1 ws_path)): {
-			          "serverName": "${serverName}"
+			          "serverName": "${serverName}"$(gen_reality_settings $1)
 			        }
 			      }
 			    },
@@ -511,7 +529,9 @@ gen_config_outbounds() {
 }
 
 get_rules_http3() {
-	uci_bool_by_type transparent_proxy disable_http3 && cat <<-EOF
+	uci_bool_by_type transparent_proxy disable_http3 || return
+	echo >&2 "# Info: disable[http3]"
+	cat <<-EOF
 
 		      {
 		        "type": "field",
