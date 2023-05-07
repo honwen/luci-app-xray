@@ -115,7 +115,7 @@ xray_injectdns() {
 	tmpDNSconf=$DNSMASQDIR/xray.conf
 	echo "all-servers" >$tmpDNSconf
 	config_load $NAME
-	for server in $(config_foreach get_server_ips servers | sort -u); do
+	for server in $(config_foreach get_server_ips servers | sort -u | grep -v '[0-9]$'); do
 		cat <<-EOF >>$tmpDNSconf
 			ipset=/${server}/xray_spec_dst_bp
 			server=/${server}/#
