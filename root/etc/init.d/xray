@@ -162,7 +162,7 @@ xray_injectdns() {
 start_rules() {
 	config_load $NAME
 	/usr/bin/${NAME}-rules \
-		-s "$(config_foreach get_server_ips servers | sort -u)" \
+		-s "$(for it in $(uci_get_by_type general server); do get_server_ips $it; done | sort -u)" \
 		-l "$(uci_get_by_type transparent_proxy local_port 1234)" \
 		-B "$(uci_get_by_type access_control wan_bp_list)" \
 		-b "$(uci_get_by_type access_control wan_bp_ips)" \
