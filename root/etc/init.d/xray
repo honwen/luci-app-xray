@@ -44,6 +44,14 @@ uci_bool_by_type() {
 	return 1
 }
 
+xray_xudp_basekey(){
+	cache=/var/run/xray-xdup-basekey
+	if [ ! -f $cache ]; then
+		xray x25519 | tail -n 1 | sed 's+.* ++g' >$cache
+	fi
+	cat $cache
+}
+
 xray_bin() {
 	if grep -q 'v2ray-sing' ${PLUGIN_FILE} 2>/dev/null; then
 		which v2ray-sing
@@ -610,7 +618,7 @@ xray_daemon() {
 	config_file=$(gen_config_file)
 	cd /var/run/xrayservice
 	xray_plugin_daemon 2>/dev/null
-	($(xray_bin) run -c ${config_file} >/var/log/xray.log 2>&1) &
+	(XRAY_XUDP_BASEKEY=$(xray_xudp_basekey) $(xray_bin) run -c ${config_file} >/var/log/xray.log 2>&1) &
 	cd - >/dev/null
 	# wait-for-dns, timeout 10s
 	if which wait4x >/dev/null 2>&1; then # use [wait4x]
