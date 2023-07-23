@@ -44,7 +44,7 @@ uci_bool_by_type() {
 	return 1
 }
 
-xray_xudp_basekey(){
+xray_xudp_basekey() {
 	cache=/var/run/xray-xdup-basekey
 	if [ ! -f $cache ]; then
 		xray x25519 | tail -n 1 | sed 's+.* ++g' >$cache
@@ -457,16 +457,14 @@ gen_server_socks_config() {
 			[ "V$server_port" = "V" ] && server_port=12000
 		fi
 		if [ "V$plugin" != "V" ]; then
+			tag="[$(basename ${plugin})]-$(random_id)"
 			plugin=$(which $plugin)
 			echo >&2 "# Info: socks(:$server_port)-extra-plugin[$plugin]"
 			echo $plugin >>${PLUGIN_FILE}
 			echo "${plugin} ${plugin_opts} >/var/log/xray.$1.log 2>&1 &" |
 				sed "s+_RANDDOM_+${server_port}+g" >>${PLUGIN_FILE}.daemon.sh
-		fi
-		if [ "V$plugin" != "V" ]; then
-			tag="[$alias]-$(random_id)"
 		else
-			tag="[$(basename ${plugin})]-$(random_id)"
+			tag="[$alias]-$(random_id)"
 		fi
 		echo >&2 "# Debug: OutB-socks-${tag}"
 		cat <<-EOF
