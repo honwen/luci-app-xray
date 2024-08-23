@@ -436,7 +436,8 @@ gen_server_shadowsocks_config() {
 			            "address": "$(uci_get_by_name $1 server)",
 			            "port": $(uci_get_by_name $1 server_port),
 			            "password": "$(uci_get_by_name $1 id)",
-			            "method": "$(uci_get_by_name $1 method)"
+			            "method": "$(uci_get_by_name $1 method)",
+			            "uot": $(uci_bool_by_name $1 uot && echo true || echo false)
 			          }
 			        ]
 			      },
